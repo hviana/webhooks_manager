@@ -10,6 +10,8 @@ import { WebhooksManager } from "https://deno.land/x/webhooks_manager/mod.ts";
 
 const manager = new WebhooksManager(); //For more than one instance use different namespaces
 
+await manager.init();
+
 await manager.addWebhooks([
   "https://myrulexample.com",
   "https://myrsecondulexample.com",

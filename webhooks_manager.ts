@@ -5,7 +5,7 @@ Page: https://sites.google.com/view/henriqueviana
 cel: +55 (41) 99999-4664
 */
 
-import { crypto, storage } from "./deps.ts";
+import { crypto } from "./deps.ts";
 
 const defaultRetryPolicy = {
   1: 10 * 1000, //sec
@@ -82,6 +82,7 @@ export class WebhooksManager {
   #options: WebhooksManagerOptions;
   #processingExecutioUnits: { [key: string]: boolean } = {};
   #retryPolicyKeys: number[];
+  #kv: Deno.Kv = undefined;
   constructor(options: WebhooksManagerOptions = {}) {
     this.#options = { ...defaultNotificationsOptions, ...options };
     this.#retryPolicyKeys = Object.keys(this.#options.retryPolicy!).map((
@@ -89,35 +90,39 @@ export class WebhooksManager {
     ) => parseInt(i));
     this.#processWebHooks();
   }
+  async init() {
+    this.#kv = await Deno.openKv();
+  }
   async getNotification(id: string): Promise<Notification> {
-    return await storage.get(
-      `wm_notifications.${this.#options.namespace!}.${id}`,
-    );
+    return (await this.#kv.get([
+      "wm_notifications",
+      this.#options.namespace!,
+      id,
+    ])).value;
   }
   async getWebhook(w: string): Promise<string> {
-    return await storage.get(
-      `wm_webhooks.${this.#options
-        .namespace!}.${w}`,
-    );
+    return (await this.#kv.get(["wm_webhooks", this.#options.namespace!, w]))
+      .value;
   }
   async deleteNotification(id: string): Promise<void> {
-    await storage.delete(`wm_notifications.${this.#options.namespace!}.${id}`);
+    await this.#kv.delete(["wm_notifications", this.#options.namespace!, id]);
   }
   async deleteWebhook(w: string): Promise<void> {
-    await storage.delete(
-      `wm_webhooks.${this.#options
-        .namespace!}.${w}`,
-    );
+    await this.#kv.delete(["wm_webhooks", this.#options.namespace!, w]);
   }
   async getNotifications(): Promise<Notification[]> {
-    return (await storage.getNameSpace(
-      `wm_notifications.${this.#options.namespace!}.`,
-    )) || [];
+    return await Array.fromAsync(
+      await this.#kv.list({
+        prefix: ["wm_notifications", this.#options.namespace!],
+      }),
+    ).map((i) => i.value);
   }
   async getWebhooks(): Promise<string[]> {
-    return (await storage.getNameSpace(
-      `wm_webhooks.${this.#options.namespace!}.`,
-    )) || [];
+    return await Array.fromAsync(
+      await this.#kv.list({
+        prefix: ["wm_webhooks", this.#options.namespace!],
+      }),
+    ).map((i) => i.value);
   }
   async addNotifications(notifications: Notification[]): Promise<string[]> {
     const ids: string[] = [];
@@ -275,44 +280,47 @@ export class WebhooksManager {
     }
   }
   async #setWebhook(w: string): Promise<void> {
-    await storage.set(
-      `wm_webhooks.${this.#options
-        .namespace!}.${w}`,
-      w,
-    );
+    await this.#kv.set(["wm_webhooks", this.#options.namespace!, w]);
   }
 
   async #setNotification(n: Notification): Promise<void> {
-    return await storage.set(
-      `wm_notifications.${this.#options.namespace!}.${n.id}`,
-      n,
-    );
+    await this.#kv.set(["wm_notifications", this.#options.namespace!, n.id]);
   }
   async #setExecutionUnit(eu: ExecutionUnit): Promise<void> {
-    await storage.set(
-      `wm_execution_units.${this.#options
-        .namespace!}.${eu.notification_id}.${eu.webhook}`,
-      eu,
-    );
+    await this.#kv.set([
+      "wm_execution_units",
+      this.#options.namespace!,
+      eu.notification_id,
+      eu.webhook,
+    ]);
   }
   async #deleteExecutionUnit(eu: ExecutionUnit): Promise<void> {
-    await storage.delete(
-      `wm_execution_units.${this.#options
-        .namespace!}.${eu.notification_id}.${eu.webhook}`,
-    );
+    await this.#kv.delete([
+      "wm_execution_units",
+      this.#options.namespace!,
+      eu.notification_id,
+      eu.webhook,
+    ]);
   }
   async #getExecutionUnits(): Promise<ExecutionUnit[]> {
-    return (await storage.getNameSpace(
-      `wm_execution_units.${this.#options.namespace!}.`,
-    )) || [];
+    return await Array.fromAsync(
+      this.#kv.list({
+        prefix: ["wm_execution_units", this.#options.namespace!],
+      }),
+    ).map((i) => i.value);
   }
   async #getExecutionUnitsOfNotification(
     notification_id: string,
   ): Promise<ExecutionUnit[]> {
-    return (await storage.getNameSpace(
-      `wm_execution_units.${this.#options.namespace!}.${notification_id}.`,
-    )) ||
-      [];
+    return await Array.fromAsync(
+      this.#kv.list({
+        prefix: [
+          "wm_execution_units",
+          this.#options.namespace!,
+          notification_id,
+        ],
+      }),
+    ).map((i) => i.value);
   }
   async #processWebHooks(): Promise<void> {
     const executionUnits = await this.#getExecutionUnits();
