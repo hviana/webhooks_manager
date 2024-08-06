@@ -88,10 +88,10 @@ export class WebhooksManager {
     this.#retryPolicyKeys = Object.keys(this.#options.retryPolicy!).map((
       i,
     ) => parseInt(i));
-    this.#processWebHooks();
   }
   async init() {
     this.#kv = await Deno.openKv();
+    this.#processWebHooks();
   }
   async getNotification(id: string): Promise<Notification> {
     return (await this.#kv.get([
