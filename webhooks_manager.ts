@@ -112,14 +112,14 @@ export class WebhooksManager {
   }
   async getNotifications(): Promise<Notification[]> {
     return await Array.fromAsync(
-      await this.#kv.list({
+      this.#kv.list({
         prefix: ["wm_notifications", this.#options.namespace!],
       }),
     ).map((i) => i.value);
   }
   async getWebhooks(): Promise<string[]> {
     return await Array.fromAsync(
-      await this.#kv.list({
+      this.#kv.list({
         prefix: ["wm_webhooks", this.#options.namespace!],
       }),
     ).map((i) => i.value);
