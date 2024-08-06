@@ -111,18 +111,18 @@ export class WebhooksManager {
     await this.#kv.delete(["wm_webhooks", this.#options.namespace!, w]);
   }
   async getNotifications(): Promise<Notification[]> {
-    return await Array.fromAsync(
+    return (await Array.fromAsync(
       this.#kv.list({
         prefix: ["wm_notifications", this.#options.namespace!],
       }),
-    ).map((i) => i.value);
+    )).map((i) => i.value);
   }
   async getWebhooks(): Promise<string[]> {
-    return await Array.fromAsync(
+    return (await Array.fromAsync(
       this.#kv.list({
         prefix: ["wm_webhooks", this.#options.namespace!],
       }),
-    ).map((i) => i.value);
+    )).map((i) => i.value);
   }
   async addNotifications(notifications: Notification[]): Promise<string[]> {
     const ids: string[] = [];
@@ -303,16 +303,16 @@ export class WebhooksManager {
     ]);
   }
   async #getExecutionUnits(): Promise<ExecutionUnit[]> {
-    return await Array.fromAsync(
+    return (await Array.fromAsync(
       this.#kv.list({
         prefix: ["wm_execution_units", this.#options.namespace!],
       }),
-    ).map((i) => i.value);
+    )).map((i) => i.value);
   }
   async #getExecutionUnitsOfNotification(
     notification_id: string,
   ): Promise<ExecutionUnit[]> {
-    return await Array.fromAsync(
+    return (await Array.fromAsync(
       this.#kv.list({
         prefix: [
           "wm_execution_units",
@@ -320,7 +320,7 @@ export class WebhooksManager {
           notification_id,
         ],
       }),
-    ).map((i) => i.value);
+    )).map((i) => i.value);
   }
   async #processWebHooks(): Promise<void> {
     const executionUnits = await this.#getExecutionUnits();
